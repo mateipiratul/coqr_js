@@ -1,3 +1,11 @@
+const errorCorrectionTable = {
+    1: { 1: 7, 0: 10, 3: 13, 2: 17 },
+    2: { 1: 10, 0: 16, 3: 22, 2: 28 },
+    3: { 1: 15, 0: 26, 3: 36, 2: 44 },
+    4: { 1: 20, 0: 36, 3: 52, 2: 64 },
+    5: { 1: 26, 0: 48, 3: 72, 2: 88 },
+};
+
 function drawTable(N) {
     const mainContainer = document.getElementById("main-container");
     var grid = document.createElement("div");
@@ -143,6 +151,8 @@ window.onload = function() {
         var maskPattern = Number(document.getElementById("mask").value).toString(2).padStart(3, '0');
         var formatString = eccLevel + maskPattern;
         formatString = eccFormatString(formatString);
+        var numEccCodewords = errorCorrectionTable[Number(document.getElementById("version").value)][Number(document.getElementById("error").value)];
+
         drawTable(size);
         let Mode4Bit = ["0001", "0010", "0100"];
         let [ModeIndicator, StringLength, StringContent] = convertToBinary();
