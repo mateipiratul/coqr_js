@@ -6,6 +6,8 @@ const errorCorrectionTable = {
     5: { 1: 26, 0: 48, 3: 72, 2: 88 },
 };
 
+let protected_areas = [];
+
 function drawTable(N) {
     const mainContainer = document.getElementById("main-container");
     var grid = document.createElement("div");
@@ -38,8 +40,11 @@ function drawPixel(row, col, color) {
 function drawFinderPatterns(row, col, size) {
     for (let i = -1; i < 8; i++)
         for (let j = -1; j < 8; j++)
-            if ((0 <= row + i && row + i < size) && (0 <= col + j && col + j < size))
+            if ((0 <= row + i && row + i < size) && (0 <= col + j && col + j < size)) {
                 drawPixel(row + i, col + j, "rgb(255, 255, 255)");
+                protected_areas.push([row + i, col + j]);
+            }
+
     const pattern = [
         [1, 1, 1, 1, 1, 1, 1],
         [1, 0, 0, 0, 0, 0, 1],
@@ -56,7 +61,7 @@ function drawFinderPatterns(row, col, size) {
 }
 
 function drawTimingPatterns(size) {
-    for (let i = 8; i < size - 8; i++)
+    for (let i = 8; i < size - 8; i++) {
         if (i % 2 == 0) {
             drawPixel(i, 6, "rgb(0, 0, 0)");
             drawPixel(6, i, "rgb(0, 0, 0)");
@@ -65,6 +70,9 @@ function drawTimingPatterns(size) {
             drawPixel(i, 6, "rgb(255, 255, 255)");
             drawPixel(6, i, "rgb(255, 255, 255)");
         }
+        protected_areas.push([i, 6]);
+        protected_areas.push([6, i]);
+    }
 }
 
 function drawAlignmentPattern(size) {
@@ -76,11 +84,13 @@ function drawAlignmentPattern(size) {
         [1, 1, 1, 1, 1]
     ];
     for (let i = 0; i < 5; i++)
-        for (let j = 0; j < 5; j++)
+        for (let j = 0; j < 5; j++) {
             if (pattern[i][j] == 1)
                 drawPixel(size - 6 + i, size - 6 + j, "rgb(0, 0, 0)");
             else
                 drawPixel(size - 6 + i, size - 6 + j, "rgb(255, 255, 255)");
+            protected_areas.push([size - 6 + i, size - 6 + j]);
+        }
 }
 
 function eccFormatString(data) {
@@ -100,21 +110,25 @@ function eccFormatString(data) {
 }
 
 function drawFormatString(size, formatString) {
-    for (let i = 0; i < 6; i++) { // done
+    for (let i = 0; i < 6; i++) {
         const color = formatString[i] === "1" ? "rgb(0, 0, 0)" : "rgb(255, 255, 255)";
         drawPixel(8, i, color);
+        protected_areas.push([8, i]);
     }
-    for (let i = 0; i < 7; i++) { // done
+    for (let i = 0; i < 7; i++) {
         const color = formatString[i] === "1" ? "rgb(0, 0, 0)" : "rgb(255, 255, 255)";
         drawPixel(size - 1 - i, 8, color);
+        protected_areas.push([size - 1 - i, 8]);
     }
-    for (let i = 0; i < 8; i++) { // done
+    for (let i = 0; i < 8; i++) {
         const color = formatString[i + 7] === "1" ? "rgb(0, 0, 0)" : "rgb(255, 255, 255)";
         drawPixel(8, size - 8 + i, color);
+        protected_areas.push([8, size - 8 + i]);
     }
-    for (let i = 5; i >= 0; i--) { // done
+    for (let i = 5; i >= 0; i--) {
         const color = formatString[i + 9] === "1" ? "rgb(0, 0, 0)" : "rgb(255, 255, 255)";
         drawPixel(5 - i, 8, color);
+        protected_areas.push([5 - i, 8]);
     }
     var culori = [];
     for (let i = 6; i < 9; i++)
@@ -122,6 +136,9 @@ function drawFormatString(size, formatString) {
     drawPixel(8, 7, culori[0]);
     drawPixel(8, 8, culori[1]);
     drawPixel(7, 8, culori[2]);
+    protected_areas.push([8, 7]);
+    protected_areas.push([8, 8]);
+    protected_areas.push([7, 8]);
 }
 
 function convertToBinary() {
@@ -141,6 +158,121 @@ function convertToBinary() {
     return [modeIndicator, binaryContent.length, binaryContent];
 }
 
+class GaloisField {
+    constructor() {
+        this.exp = new Array(512);
+        this.log = new Array(256);
+        let x = 1;
+
+        for (let i = 0; i < 255; i++) {
+            this.exp[i] = x;
+            this.log[x] = i;
+            x <<= 1;
+            if (x & 0x100) {
+                x ^= 0x11D;
+            }
+        }
+
+        for (let i = 255; i < 512; i++) {
+            this.exp[i] = this.exp[i - 255];
+        }
+    }
+
+    multiply(x, y) {
+        if (x === 0 || y === 0)
+            return 0;
+        return this.exp[(this.log[x] + this.log[y]) % 255];
+    }
+}
+
+function generatePolynomial(numErrorWords) {
+    const gf = new GaloisField();
+    let g = [1];
+
+    for (let i = 0; i < numErrorWords; i++) {
+        let temp = new Array(g.length + 1).fill(0);
+
+        for (let j = 0; j < g.length; j++) {
+            temp[j] ^= g[j]; // Copy existing terms
+            temp[j + 1] ^= gf.multiply(g[j], gf.exp[i]); // Multiply by α^i
+        }
+        g = temp;
+    }
+    return g;
+}
+
+function reedSolomonEncode(dataWords, numErrorWords) {
+    const gf = new GaloisField();
+    const generator = generatePolynomial(numErrorWords);
+    let message = [...dataWords, ...new Array(numErrorWords).fill(0)];
+
+    for (let i = 0; i < dataWords.length; i++) {
+        let coef = message[i];
+        if (coef !== 0)
+            for (let j = 1; j < generator.length; j++)
+                message[i + j] ^= gf.multiply(generator[j], coef);
+    }
+
+    return [...dataWords, ...message.slice(dataWords.length)];
+}
+
+function placeDataBits(bits, size) {
+    let bitIndex = 0;
+    for (let rightCol = size - 1; rightCol > 0; rightCol -= 2) {
+        let leftCol = rightCol - 1;
+        if (rightCol == 6) {
+            rightCol--;
+            leftCol--;
+        }
+
+        for (let row = size - 1; row >= 0; row--) {
+            if (bitIndex < bits.length && !protected_areas.some(area => area[0] === row && area[1] === rightCol)) {
+                const color = bits[bitIndex] === "1" ? "rgb(0, 0, 0)" : "rgb(255, 255, 255)";
+                drawPixel(row, rightCol, color);
+                bitIndex++;
+            }
+            if (leftCol >= 0 && bitIndex < bits.length && !protected_areas.some(area => area[0] === row && area[1] === leftCol)) {
+                const color = bits[bitIndex] === "1" ? "rgb(0, 0, 0)" : "rgb(255, 255, 255)";
+                drawPixel(row, leftCol, color);
+                bitIndex++;
+            }
+        }
+        for (let row = 0; row < size; row++) {
+            if (bitIndex < bits.length && !protected_areas.some(area => area[0] === row && area[1] === rightCol)) {
+                const color = bits[bitIndex] === "1" ? "rgb(0, 0, 0)" : "rgb(255, 255, 255)";
+                drawPixel(row, rightCol, color);
+                bitIndex++;
+            }
+            if (leftCol >= 0 && bitIndex < bits.length && !protected_areas.some(area => area[0] === row && area[1] === leftCol)) {
+                const color = bits[bitIndex] === "1" ? "rgb(0, 0, 0)" : "rgb(255, 255, 255)";
+                drawPixel(row, leftCol, color);
+                bitIndex++;
+            }
+        }
+    }
+}
+
+function applyMask(size) {
+    var maskPattern = Number(document.getElementById("mask").value), condition;
+    switch (maskPattern) {
+        case 0:
+            condition = (i + j) % 2 === 0;
+            break;
+        case 1:
+
+    }
+    for (let i = 0; i < size; i++)
+        for (let j = 0; j < size; j++)
+            if (!condition)
+                flipBit(i, j);
+}
+
+function flipBit(row, col) {
+    var cell = document.getElementById(`r${row}c${col}`);
+    const color = cell.style.backgroundColor === "rgb(0, 0, 0)" ? "rgb(255, 255, 255)" : "rgb(0, 0, 0)";
+    cell.style.backgroundColor = color;
+}
+
 window.onload = function() {
     document.getElementById("generare").addEventListener("click", () => {
         const container = document.getElementById("container");
@@ -152,16 +284,21 @@ window.onload = function() {
         var formatString = eccLevel + maskPattern;
         formatString = eccFormatString(formatString);
         var numEccCodewords = errorCorrectionTable[Number(document.getElementById("version").value)][Number(document.getElementById("error").value)];
-
-        drawTable(size);
         let Mode4Bit = ["0001", "0010", "0100"];
         let [ModeIndicator, StringLength, StringContent] = convertToBinary();
+        let StringContentToDecimal = StringContent.map(bin => parseInt(bin, 2));
+        let completeDataBits = reedSolomonEncode(StringContentToDecimal, numEccCodewords).map(num => num.toString(2).padStart(8, '0'));
+        let bits = completeDataBits.join("");
+        drawTable(size);
         drawPixel(size - 8, 8, "rgb(0, 0, 0)"); // dark module
+        protected_areas.push([size - 8, 8]);
         drawFinderPatterns(0, 0, size); // finder patterns
         drawFinderPatterns(0, size - 7, size);
         drawFinderPatterns(size - 7, 0, size);
         drawTimingPatterns(size);
         drawAlignmentPattern(size);
         drawFormatString(size, formatString);
+        placeDataBits(bits, size);
+        applyMask(size);
     });
 }
