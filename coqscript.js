@@ -1,11 +1,11 @@
 const errorCorrectionTable = {
-    1: { 1: 7, 0: 10, 3: 13, 2: 17 },
-    2: { 1: 10, 0: 16, 3: 22, 2: 28 },
-    3: { 1: 15, 0: 26, 3: 36, 2: 44 },
-    4: { 1: 20, 0: 36, 3: 52, 2: 64 },
-    5: { 1: 26, 0: 48, 3: 72, 2: 88 },
-},
-nrOfBytes = [26, 44, 70, 100, 136];
+        1: { 1: 7, 0: 10, 3: 13, 2: 17 },
+        2: { 1: 10, 0: 16, 3: 22, 2: 28 },
+        3: { 1: 15, 0: 26, 3: 36, 2: 44 },
+        4: { 1: 20, 0: 36, 3: 52, 2: 64 },
+        5: { 1: 26, 0: 48, 3: 72, 2: 88 },
+    },
+    nrOfBytes = [26, 44, 70, 100, 136];
 
 let protected_areas = [];
 
@@ -22,7 +22,6 @@ function drawTable(N) {
         for (let j = 0; j < N; j++) {
             const cell = document.createElement("div");
             cell.id = `r${i}c${j}`;
-            cell.style.border = "1px solid red"; //optional
             cell.style.aspectRatio = "1 / 1";
             cell.style.width = "12px";
             cell.style.height = "12px";
@@ -207,9 +206,15 @@ function generatePolynomial(numErrorWords) {
         let temp = new Array(g.length + 1).fill(0);
 
         for (let j = 0; j < g.length; j++) {
-            temp[j] ^= g[j]; // Copy existing terms
-            temp[j + 1] ^= gf.multiply(g[j], gf.exp[i]); // Multiply by α^i
+            // Remove the XOR with g[j] as we want to multiply the whole polynomial
+            temp[j + 1] = gf.multiply(g[j], gf.exp[i]);
         }
+
+        // Now XOR with the previous polynomial
+        for (let j = 0; j < g.length; j++) {
+            temp[j] ^= g[j];
+        }
+
         g = temp;
     }
     return g;
@@ -221,13 +226,17 @@ function reedSolomonEncode(dataWords, numErrorWords) {
     let message = [...dataWords, ...new Array(numErrorWords).fill(0)];
 
     for (let i = 0; i < dataWords.length; i++) {
-        let coef = message[i];
-        if (coef !== 0)
-            for (let j = 1; j < generator.length; j++)
+        const coef = message[i];
+        if (coef !== 0) {
+            for (let j = 0; j < generator.length; j++) {
+                // XOR with the multiplication result
                 message[i + j] ^= gf.multiply(generator[j], coef);
+            }
+        }
     }
 
-    return [...dataWords, ...message.slice(dataWords.length)];
+    // Return only the error correction codewords
+    return message.slice(dataWords.length);
 }
 
 function placeDataBits(bits, size) {
@@ -252,6 +261,10 @@ function placeDataBits(bits, size) {
             if (!protected_areas.some(area => area[0] === row && area[1] === rightCol)) {
                 const color = bits[bitIndex] === "1" ? "rgb(0, 0, 0)" : "rgb(255, 255, 255)";
                 drawPixel(row, rightCol, color);
+                // const cell = document.getElementById(`r${row}c${rightCol}`);
+                // cell.innerHTML = Math.floor(bitIndex / 8);
+                // cell.style.color = "red";
+                // cell.style.fontSize = "10px";
                 bitIndex++;
             }
 
@@ -259,6 +272,10 @@ function placeDataBits(bits, size) {
             if (leftCol >= 0 && bitIndex < bits.length && !protected_areas.some(area => area[0] === row && area[1] === leftCol)) {
                 const color = bits[bitIndex] === "1" ? "rgb(0, 0, 0)" : "rgb(255, 255, 255)";
                 drawPixel(row, leftCol, color);
+                // const cell = document.getElementById(`r${row}c${leftCol}`);
+                // cell.innerHTML = Math.floor(bitIndex / 8);
+                // cell.style.color = "red";
+                // cell.style.fontSize = "10px";
                 bitIndex++;
             }
 
@@ -273,16 +290,50 @@ function placeDataBits(bits, size) {
     return bitIndex;
 }
 
+
 function applyMask(size) {
-    for (let i = 0; i < size; i++)
-        for (let j = 0; j < size; j++)
+    var maskPattern = Number(document.getElementById("mask").value);
+
+    for (let i = 0; i < size; i++) {
+        for (let j = 0; j < size; j++) {
+            if (protected_areas.some(area => area[0] === i && area[1] === j)) {
+                continue;
+            }
+
+            let shouldFlip = false;
+
             switch (maskPattern) {
                 case 0:
-                    condition = (i + j) % 2 === 0;
+                    shouldFlip = (i + j) % 2 === 0;
                     break;
                 case 1:
-
+                    shouldFlip = i % 2 === 0;
+                    break;
+                case 2:
+                    shouldFlip = j % 3 === 0;
+                    break;
+                case 3:
+                    shouldFlip = (i + j) % 3 === 0;
+                    break;
+                case 4:
+                    shouldFlip = (Math.floor(i / 2) + Math.floor(j / 3)) % 2 === 0;
+                    break;
+                case 5:
+                    shouldFlip = ((i * j) % 2 + (i * j) % 3) === 0;
+                    break;
+                case 6:
+                    shouldFlip = (((i * j) % 2 + (i * j) % 3) % 2) === 0;
+                    break;
+                case 7:
+                    shouldFlip = (((i + j) % 2 + (i * j) % 3) % 2) === 0;
+                    break;
             }
+
+            if (shouldFlip) {
+                flipBit(i, j);
+            }
+        }
+    }
 }
 
 function flipBit(row, col) {
@@ -294,8 +345,10 @@ function flipBit(row, col) {
 window.onload = function() {
     document.getElementById("generare").addEventListener("click", () => {
         const container = document.getElementById("container");
-        if (container)
+        if (container) {
             container.remove();
+            protected_areas = [];
+        }
         var size = 17 + 4 * Number(document.getElementById("version").value);
         var eccLevel = Number(document.getElementById("error").value).toString(2).padStart(2, "0");
         var maskPattern = Number(document.getElementById("mask").value).toString(2).padStart(3, "0");
@@ -306,25 +359,24 @@ window.onload = function() {
         let [ModeIndicator, StringLength, StringContent] = convertToBinary();
         let paddedStringContent = padData(Mode4Bit[ModeIndicator], StringLength.toString(2).padStart(8, "0"), StringContent, Number(document.getElementById("version").value) - 1);
         let StringContentToDecimal = paddedStringContent.map(bin => parseInt(bin, 2));
-        let completeDataBits = reedSolomonEncode(StringContentToDecimal, numEccCodewords).map(num => num.toString(2).padStart(8, "0"));
+        let ecc = reedSolomonEncode(StringContentToDecimal, numEccCodewords).map(num => num.toString(2).padStart(8, "0").split("").reverse().join(""));
+        let completeDataBits = [...StringContentToDecimal.map(num => num.toString(2).padStart(8, "0")), ...ecc];
         let flippy = completeDataBits.map(s => s.split("").reverse().join(""));
         let bits = flippy.join("") + "0000000";
-
-        drawTable(size);
-        drawPixel(size - 8, 8, "rgb(0, 0, 0)"); // dark module
-        protected_areas.push([size - 8, 8]);
-        drawFinderPatterns(0, 0, size); // finder patterns
-        drawFinderPatterns(0, size - 7, size);
-        drawFinderPatterns(size - 7, 0, size);
-        drawTimingPatterns(size);
-        if (Number(document.getElementById("version").value) !== 1)
-            drawAlignmentPattern(size);
-        drawFormatString(size, formatString);
-        placeDataBits(bits, size);
-
-        // smadu butonul ala de html punel cu value 10 si numele "automask" sau cv de genu
-        if (Number(document.getElementById("mask").value) !== 10) // best mask algorithm to be applied if value is 10
-            applyMask(size, Number(document.getElementById("mask").value));
-        else // de aici tte descurci tu
+        if (StringLength + numEccCodewords + 2 <= nrOfBytes[Number(document.getElementById("version").value)]) {
+            drawTable(size);
+            drawPixel(size - 8, 8, "rgb(0, 0, 0)"); // dark module
+            protected_areas.push([size - 8, 8]);
+            drawFinderPatterns(0, 0, size); // finder patterns
+            drawFinderPatterns(0, size - 7, size);
+            drawFinderPatterns(size - 7, 0, size);
+            drawTimingPatterns(size);
+            if (Number(document.getElementById("version").value) !== 1)
+                drawAlignmentPattern(size);
+            drawFormatString(size, formatString);
+            placeDataBits(bits, size);
+            applyMask(size);
+        }
+        else alert("Versiunea de cod QR este prea mică (sau nivelul de corecție al erorilor este prea mare pentru această versiune).");
     });
 }
