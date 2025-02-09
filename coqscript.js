@@ -4,7 +4,8 @@ const errorCorrectionTable = {
     3: { 1: 15, 0: 26, 3: 36, 2: 44 },
     4: { 1: 20, 0: 36, 3: 52, 2: 64 },
     5: { 1: 26, 0: 48, 3: 72, 2: 88 },
-};
+},
+nrOfBytes = [26, 44, 70, 100, 136];
 
 let protected_areas = [];
 
@@ -21,7 +22,7 @@ function drawTable(N) {
         for (let j = 0; j < N; j++) {
             const cell = document.createElement("div");
             cell.id = `r${i}c${j}`;
-            cell.style.border = "1px solid #000"; //optional
+            cell.style.border = "1px solid red"; //optional
             cell.style.aspectRatio = "1 / 1";
             cell.style.width = "12px";
             cell.style.height = "12px";
@@ -86,10 +87,10 @@ function drawAlignmentPattern(size) {
     for (let i = 0; i < 5; i++)
         for (let j = 0; j < 5; j++) {
             if (pattern[i][j] == 1)
-                drawPixel(size - 6 + i, size - 6 + j, "rgb(0, 0, 0)");
+                drawPixel(size - 9 + i, size - 9 + j, "rgb(0, 0, 0)");
             else
-                drawPixel(size - 6 + i, size - 6 + j, "rgb(255, 255, 255)");
-            protected_areas.push([size - 6 + i, size - 6 + j]);
+                drawPixel(size - 9 + i, size - 9 + j, "rgb(255, 255, 255)");
+            protected_areas.push([size - 9 + i, size - 9 + j]);
         }
 }
 
@@ -158,6 +159,19 @@ function convertToBinary() {
     return [modeIndicator, binaryContent.length, binaryContent];
 }
 
+function padData(mode, length, content, sizemax) {
+    var result = [mode, length, ...content, "0000"].join(""), contor = 0, returnArray = [];
+    while (result.length < (nrOfBytes[sizemax] - errorCorrectionTable[Number(document.getElementById("version").value)][Number(document.getElementById("error").value)]) * 8) {
+        if (contor % 2 === 0)
+            result += "11101100";
+        else result += "00010001";
+        contor++;
+    }
+    for (let i = 0; i < result.length; i += 8)
+        returnArray.push(result.slice(i, i + 8));
+    return returnArray;
+}
+
 class GaloisField {
     constructor() {
         this.exp = new Array(512);
@@ -218,53 +232,57 @@ function reedSolomonEncode(dataWords, numErrorWords) {
 
 function placeDataBits(bits, size) {
     let bitIndex = 0;
-    for (let rightCol = size - 1; rightCol > 0; rightCol -= 2) {
+    let goingUp = true;  // First column pair goes up
+
+    // Start from the right, moving left in pairs of columns
+    for (let rightCol = size - 1; rightCol >= 0; rightCol -= 2) {
         let leftCol = rightCol - 1;
-        if (rightCol == 6) {
-            rightCol--;
-            leftCol--;
+
+        // Handle vertical timing pattern
+        if (rightCol === 6) {
+            rightCol = 5;
+            leftCol = 4;
         }
 
-        for (let row = size - 1; row >= 0; row--) {
-            if (bitIndex < bits.length && !protected_areas.some(area => area[0] === row && area[1] === rightCol)) {
+        // Determine starting row based on direction
+        let row = goingUp ? size - 1 : 0;
+
+        while ((goingUp && row >= 0) || (!goingUp && row < size) && bitIndex < bits.length) {
+            // Place bit in right column
+            if (!protected_areas.some(area => area[0] === row && area[1] === rightCol)) {
                 const color = bits[bitIndex] === "1" ? "rgb(0, 0, 0)" : "rgb(255, 255, 255)";
                 drawPixel(row, rightCol, color);
                 bitIndex++;
             }
+
+            // Place bit in left column (if it exists)
             if (leftCol >= 0 && bitIndex < bits.length && !protected_areas.some(area => area[0] === row && area[1] === leftCol)) {
                 const color = bits[bitIndex] === "1" ? "rgb(0, 0, 0)" : "rgb(255, 255, 255)";
                 drawPixel(row, leftCol, color);
                 bitIndex++;
             }
+
+            // Move row in current direction
+            row += goingUp ? -1 : 1;
         }
-        for (let row = 0; row < size; row++) {
-            if (bitIndex < bits.length && !protected_areas.some(area => area[0] === row && area[1] === rightCol)) {
-                const color = bits[bitIndex] === "1" ? "rgb(0, 0, 0)" : "rgb(255, 255, 255)";
-                drawPixel(row, rightCol, color);
-                bitIndex++;
-            }
-            if (leftCol >= 0 && bitIndex < bits.length && !protected_areas.some(area => area[0] === row && area[1] === leftCol)) {
-                const color = bits[bitIndex] === "1" ? "rgb(0, 0, 0)" : "rgb(255, 255, 255)";
-                drawPixel(row, leftCol, color);
-                bitIndex++;
-            }
-        }
+
+        // Switch direction for next column pair
+        goingUp = !goingUp;
     }
+
+    return bitIndex;
 }
 
 function applyMask(size) {
-    var maskPattern = Number(document.getElementById("mask").value), condition;
-    switch (maskPattern) {
-        case 0:
-            condition = (i + j) % 2 === 0;
-            break;
-        case 1:
-
-    }
     for (let i = 0; i < size; i++)
         for (let j = 0; j < size; j++)
-            if (!condition)
-                flipBit(i, j);
+            switch (maskPattern) {
+                case 0:
+                    condition = (i + j) % 2 === 0;
+                    break;
+                case 1:
+
+            }
 }
 
 function flipBit(row, col) {
@@ -279,16 +297,19 @@ window.onload = function() {
         if (container)
             container.remove();
         var size = 17 + 4 * Number(document.getElementById("version").value);
-        var eccLevel = Number(document.getElementById("error").value).toString(2).padStart(2, '0');
-        var maskPattern = Number(document.getElementById("mask").value).toString(2).padStart(3, '0');
+        var eccLevel = Number(document.getElementById("error").value).toString(2).padStart(2, "0");
+        var maskPattern = Number(document.getElementById("mask").value).toString(2).padStart(3, "0");
         var formatString = eccLevel + maskPattern;
         formatString = eccFormatString(formatString);
         var numEccCodewords = errorCorrectionTable[Number(document.getElementById("version").value)][Number(document.getElementById("error").value)];
         let Mode4Bit = ["0001", "0010", "0100"];
         let [ModeIndicator, StringLength, StringContent] = convertToBinary();
-        let StringContentToDecimal = StringContent.map(bin => parseInt(bin, 2));
-        let completeDataBits = reedSolomonEncode(StringContentToDecimal, numEccCodewords).map(num => num.toString(2).padStart(8, '0'));
-        let bits = completeDataBits.join("");
+        let paddedStringContent = padData(Mode4Bit[ModeIndicator], StringLength.toString(2).padStart(8, "0"), StringContent, Number(document.getElementById("version").value) - 1);
+        let StringContentToDecimal = paddedStringContent.map(bin => parseInt(bin, 2));
+        let completeDataBits = reedSolomonEncode(StringContentToDecimal, numEccCodewords).map(num => num.toString(2).padStart(8, "0"));
+        let flippy = completeDataBits.map(s => s.split("").reverse().join(""));
+        let bits = flippy.join("") + "0000000";
+
         drawTable(size);
         drawPixel(size - 8, 8, "rgb(0, 0, 0)"); // dark module
         protected_areas.push([size - 8, 8]);
@@ -296,9 +317,14 @@ window.onload = function() {
         drawFinderPatterns(0, size - 7, size);
         drawFinderPatterns(size - 7, 0, size);
         drawTimingPatterns(size);
-        drawAlignmentPattern(size);
+        if (Number(document.getElementById("version").value) !== 1)
+            drawAlignmentPattern(size);
         drawFormatString(size, formatString);
         placeDataBits(bits, size);
-        applyMask(size);
+
+        // smadu butonul ala de html punel cu value 10 si numele "automask" sau cv de genu
+        if (Number(document.getElementById("mask").value) !== 10) // best mask algorithm to be applied if value is 10
+            applyMask(size, Number(document.getElementById("mask").value));
+        else // de aici tte descurci tu
     });
 }
