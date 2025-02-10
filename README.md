@@ -13,7 +13,7 @@ Conținutul acestui text documentație este împărțit în două secțiune simp
 [*Către Bibliografie*](#referințe-utilizate-bibliografie)
 
 Codul QR este o **matrice pătratică**, dimensiunea sa fiind dedusă conform formulei:
-`dimensiune = 17 + 4 *v_qr`, unde `v_qr` este numărul versiunii codului QR ales, iar indexarea fiind realizată de la poziția `(0, 0)`.
+`dimensiune = 17 + (4 * v_qr)`, unde `v_qr` este numărul versiunii codului QR ales, iar indexarea fiind realizată de la poziția `(0, 0)`.
 
 ## **Generarea codului QR**
 
@@ -260,4 +260,5 @@ Posibile implementări viitoare (?): secțiunea de cititor a codului QR; este pr
 - [**Wikipedia**](https://upload.wikimedia.org/wikipedia/commons/d/d5/QRCode-3-Layout%2CEncoding.png)
 - [**Reed-Solomon Calculator**](https://repo.progsbase.com/repoviewer/no.inductive.libraries/ReedSolomon/latest///ComputeReadSolomonCodes/online/)
 - [**Reed-Solomon Algorithm Functionality**](https://www.cs.cmu.edu/~guyb/realworld/reedsolomon/reed_solomon_codes.html)
+- **https://www.qrcode.com/en/about/version.html**
 ---
