@@ -311,7 +311,7 @@ function applyMask(size) {
 }
 
 function flipBit(row, col) {
-    var cell = document.getElementById(`r${row}c${col}`);
+    var cell = document.getElementById(`r${row}c${col}`); // retrieve element
     const color = cell.style.backgroundColor === "rgb(0, 0, 0)" ? "rgb(255, 255, 255)" : "rgb(0, 0, 0)";
     cell.style.backgroundColor = color;
 }
@@ -322,7 +322,7 @@ function calculatePenaltyScore(size) {
         calculatePenaltyRule2(size) +
         calculatePenaltyRule3(size) +
         calculatePenaltyRule4(size)
-    );
+    ); // calculul scorului final
 }
 
 function calculatePenaltyRule1(size) {
@@ -477,7 +477,7 @@ function findBestMask(size, bits) {
 window.onload = function() {
     document.getElementById("generare").addEventListener("click", () => {
         const container = document.getElementById("container");
-        if (container) {
+        if (container) { // daca a fost deja generat un cod qr anterior, sunt sterse datele anterioare
             container.remove();
             protected_areas = [];
         }
@@ -495,7 +495,7 @@ window.onload = function() {
         let flippy = completeDataBits.map(s => s.split("").reverse().join("")); // bitii sunt inversati pentru algoritmul de umplere a matricei
         let bits = flippy.join("") + "0000000";
 
-        console.log(bits);
+        console.log(bits); // check
         if (StringLength + numEccCodewords + 2 <= nrOfBytes[Number(document.getElementById("version").value)]) {
             drawTable(size);
             drawPixel(size - 8, 8, "rgb(0, 0, 0)"); // dark module
@@ -508,17 +508,13 @@ window.onload = function() {
                 drawAlignmentPattern(size);
             }
 
-            placeDataBits(bits, size);
+            placeDataBits(bits, size); // algoritmul de encodare in sine
 
             if (maskSelect.value === "auto") {
-
                 const bestMask = findBestMask(size, bits);
-
                 maskSelect.value = bestMask.toString();
                 maskPattern = bestMask.toString(2).padStart(3, "0");
-            } else {
-                maskPattern = Number(maskSelect.value).toString(2).padStart(3, "0");
-            }
+            } else maskPattern = Number(maskSelect.value).toString(2).padStart(3, "0");
 
             formatString = eccLevel + maskPattern; // cei 5 biti pentru calculul Format String
             formatString = eccFormatString(formatString); // rezultatul de 15 biti
