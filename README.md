@@ -1,9 +1,5 @@
 # **COQR by S&M**
-<style>
-* {
-    text-align: justify;
-}
-</style>
+
 Script scris de Cocu Matei-Iulian (grupa 152) și Smădu Andrei (grupa 143)
 ## **Descriere**
 Proiectul echipei noastre (*S&M*) constă într-o pagină HTML interactivă simplistă, care oferă posibilitatea de a alege una dintre primele 5 variante de cod QR. Utilizatorul poate selecta:
@@ -17,7 +13,7 @@ Conținutul acestui text documentație este împărțit în două secțiune simp
 [*Către Bibliografie*](#referințe-utilizate-bibliografie)
 
 Codul QR este o **matrice pătratică**, dimensiunea sa fiind dedusă conform formulei:
-\[ \text{dimensiune} = 17 + 4 \times v_{qr} \], unde \( v_{qr} ) este numărul versiunii codului QR ales, indexarea fiind realizată de la poziția \( (0, 0) \).
+`dimensiune = 17 + 4 *v_qr`, unde `v_qr` este numărul versiunii codului QR ales, iar indexarea fiind realizată de la poziția `(0, 0)`.
 
 ## **Generarea codului QR**
 
