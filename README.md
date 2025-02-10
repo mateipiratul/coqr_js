@@ -243,8 +243,14 @@ Regulile pentru calcularea penalty score-ului:
 ---
 
 ## **Concluzie**
-  Proiectul nostru permite generarea unui cod QR personalizat, oferind utilizatorului un control detaliat asupra versiunii, nivelului de corecție a erorilor și măștii utilizate. Prin implementarea standardelor internaționale, utilizarea **Galois Field**, **Reed-Solomon Encoding** și a unui **algoritm optimizat de umplere a matricii**, codurile QR produse sunt eficiente și ușor de decodat, indiferent de condițiile de scanare.
+Proiectul nostru permite generarea unui cod QR personalizat, oferind utilizatorului un control detaliat asupra versiunii, nivelului de corecție a erorilor și măștii utilizate prin implementarea standardelor internaționale, utilizarea **Galois Field**, **Reed-Solomon Encoding** și a unui **algoritm optimizat de umplere a matricii**.
 
+Ca notă de final, codul nu funcționează până la final... `:(((` Scanner-ul unui telefon identifică faptul că se încearcă scanarea unui cod QR, însă nu reușește descifrarea acestuia. Pentru a urmări îndeaproape eventuale scăpări de logică am implementat de-a lungul progresului nostru mai multe test-case uri și algoritmi de verificare pentru datele rezultate, ajungând la concluzia nefavorabilă că toate testele noastre funcționează, astfel nereușind să identificăm sursa problemei. Am lăsat câteva din console-log-urile utile și de interes pentru munca de până acum, cu promisiunea că vom reveni asupra acestui stadiu al proiectului și îl vom aduce într-o formă finală și perfect funcțională!
+
+Posibile implementări viitoare (?): secțiunea de cititor a codului QR; este primită ca input o imagine, și, utilizând o librărie de procesare a imaginilor, `image-js`, este analizată structura codului QR.
+- Este calculată poziția Allignment Pattern-ului, și, implicit, și distanța de la aceasta la Finder Pattern-uri. Pe baza acestor măsuri, imaginea este digitalizată și adusă la o formă cât se poate de simplă pentru pașii următori. Sunt identificate Timing Pattern-urile și, pe baza dimensiunilor acestora, este determinată versiunea codului QR. Ulterior, sunt procesate informațiile Format String-ului, fiind aflate astfel *indicatorul de modul* și *masca aplicată codului QR*, urmând astfel ca masca să fie înlăturată printr-un algoritm identic cu cel de aplicare. Algoritmul de decodificare al codului QR în sine se bazează pe aceleași idei mari ale unui generator, fiind necesari algoritmi precum *Reed-Solomon* encoding & decoding, aplicații ale *Galois Field* ș.a.m.d..
+
+---
 ## **Referințe utilizate (bibliografie)**
 - **https://www.thonky.com/qr-code-tutorial/**
 - **https://www.nayuki.io/page/creating-a-qr-code-step-by-step**

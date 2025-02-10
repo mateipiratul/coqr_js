@@ -504,10 +504,8 @@ window.onload = function() {
             drawFinderPatterns(0, size - 7, size);
             drawFinderPatterns(size - 7, 0, size);
             drawTimingPatterns(size);
-            if (Number(document.getElementById("version").value) !== 1) {
+            if (Number(document.getElementById("version").value) !== 1)
                 drawAlignmentPattern(size);
-            }
-
             placeDataBits(bits, size); // algoritmul de encodare in sine
 
             if (maskSelect.value === "auto") {
@@ -521,5 +519,8 @@ window.onload = function() {
             drawFormatString(size, formatString);
             applyMask(size); // aplicarea mastii in sine
         } else alert("Version too small or error correction level too high for this version."); // eroare
+    });
+    document.getElementById("decoder").addEventListener("click", () => {
+       alert("Feature yet to be implemented.");
     });
 }
