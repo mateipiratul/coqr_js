@@ -32,7 +32,7 @@ function drawTable(N) {
     mainContainer.appendChild(grid);
 }
 
-function drawPixel(row, col, color) { // functia de colorare a unui bit
+function drawPixel(row, col, color) { // func
     var cell = document.getElementById(`r${row}c${col}`);
     cell.style.backgroundColor = color;
 }
