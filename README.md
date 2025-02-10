@@ -1,5 +1,4 @@
-# coqr_js
-# **Proiectul echipei noastre**
+# **COQR**
 
 ## **Descriere**
 Proiectul echipei noastre (*nume echipă*) constă într-o pagină HTML interactivă simplistă, care oferă posibilitatea de a alege una dintre primele 5 variante de cod QR. Utilizatorul poate selecta:
@@ -8,26 +7,25 @@ Proiectul echipei noastre (*nume echipă*) constă într-o pagină HTML interact
 - **Una dintre cele 8 măști** standardizate internațional;
 - **Calculul automat al celei mai coerente măști** pentru codul QR generat.
 
+Conținutul acestui text documentație este împărțit în două secțiune simplificate: [**funcționalitatea generală**](#generare-qr) a implementării scriptului și o [**explicație ulterioară**](#algoritmi) în detaliu a ideilor din spatele algoritmilor utilizați pentru *procedeele mai complexe* din script
+
 Codul QR este o **matrice pătratică**, dimensiunea sa fiind dedusă conform formulei:
+\[ \text{dimensiune} = 17 + 4 \times v_{qr} \], unde \( v_{qr} ) este numărul versiunii codului QR ales, indexarea fiind realizată de la poziția \( (0, 0) \).
 
-\[ \text{dimensiune} = 17 + 4 \times v_{qr} \]
+## [**Generarea codului QR**](#generare-qr)
 
-unde \( v_{qr} \) este numărul versiunii codului QR ales, indexarea fiind realizată de la poziția \( (0, 0) \).
-
-## **Generarea codului QR**
-
-La apăsarea butonului de generare, codul QR este afișat, iar implementarea parcurge următorii pași:
+La apăsarea butonului de generare, codul QR este afișat **(funcția drawTable** inițializează matricea cu biți gri, sugestiv ideii că biții **nu au fost colorați,** fiind apelată funcția **drawPixel de fiecare dată când este necesar acest lucru)**, iar implementarea parcurge următorii pași:
 
 ### **1) Encodarea zonelor fixe**
 Pentru aceste zone, este declarat un **vector global de dubleți**, fiecare element reprezentând poziția unui bit sub forma \( (x, y) \). Această informație este necesară pentru algoritmul de umplere a matricei QR.
-
 - **a)** **Generarea de Timing Patterns**
+    - Apel la funcția **drawTimingPatterns**
     - Situate pe rândul 6 și coloana 6;
     - Reprezintă linii de biți intermitenți (alb/negru), începând cu bitul negru;
 
 - **b)** **Generarea de Finder Patterns**
     - Cele 3 zone din colțurile codului QR, mărginite corespunzător cu biți albi;
-
+    - Apel la funcția **drawFinderPatterns**
 - **c)** **Generarea de Alignment Pattern**
     - Pătratul de dimensiune mai mică din colțul de jos-dreapta;
     - Aplicat tuturor versiunilor (cu excepția Version 1 - 21x21);
@@ -86,11 +84,13 @@ Datele sunt plasate în matrice conform unui **algoritm de umplere în zig-zag**
 Măștile sunt utilizate pentru **dispersarea zonelor de biți de aceeași culoare** (*clustered bits*), îmbunătățind lizibilitatea codului QR.
 
 - Dacă utilizatorul selectează o mască manuală, aceasta este aplicată direct;
-- Dacă utilizatorul alege **mască automată**, se calculează **cea mai eficientă mască** în funcție de biții de informație ai codului QR;
-- Funcția `bitFlip` inversează biții (*0 → 1 și 1 → 0*).
+- Dacă utilizatorul alege **aplicarea unei măști automate**, este calculată **cea mai eficientă mască** în funcție de biții de informație ai codului QR;
+- Funcția `bitFlip` inversează biții (*0 → 1, iar 1 → 0*).
 
+Continuând cu algoritmul de determinare a celei mai eficiente măști, sunt aplicate, pe rând, fiecare dintre cele 8 măști valabile la nivelul standardizat și mai apoi sunt parcurse și trecute prin 4 teste, acestea calculând pentru fiecare în parte un scor al inconsistențelor (penalty score). (informații reinterpretate din sursa **https://www.thonky.com/qr-code-tutorial/data-masking**)
+Pentru prima condiție de evaluare, verifică fiecare rând, unul câte unul. Dacă există cinci module consecutive de aceeași culoare, adaugă 3 la penalizare. Dacă există module suplimentare de aceeași culoare după primele cinci, adaugă 1 pentru fiecare modul suplimentar de aceeași culoare. Apoi, verifică fiecare coloană, unul câte unul, respectând aceeași condiție. Adaugă totalul orizontal și vertical pentru a obține scorul de penalizare #1.
 ---
-
+## [**Elaborarea algoritmilor folosiți**](#algoritmi)
 ## **Concluzie**
 Proiectul nostru permite generarea unui cod QR personalizat, oferind utilizatorului un control detaliat asupra versiunii, nivelului de corecție a erorilor și măștii utilizate. Prin implementarea standardelor internaționale, utilizarea **Galois Field**, **Reed-Solomon Encoding** și a unui **algoritm optimizat de umplere a matricii**, codurile QR produse sunt eficiente și ușor de decodat, indiferent de condițiile de scanare.
 
